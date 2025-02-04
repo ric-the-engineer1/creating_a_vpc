@@ -1,232 +1,183 @@
-creating_a_vpc
+# AWS VPC Infrastructure Setup Project
 
-How to create a AWS VPC using bash and terraform on a Ubuntu 22.04 LTS.
+## Project Overview
+This project sets up a basic AWS Virtual Private Cloud (VPC) infrastructure using Terraform. It's designed as a foundation for a secure healthcare platform, implementing AWS best practices for networking and security.
 
-STEP 1: Initializing Server Setup
+## Prerequisites
+- Ubuntu Server 22.04 LTS
+- AWS Account with administrative access
+- AWS Access and Secret keys
+- Basic understanding of Linux commands
 
-The first step is updating and upgrading your operating system. We will be using bash scripting for this.
+## Installation Steps
 
-sudo apt update
+### 1. Initial Setup
+Run the setup script to install necessary tools and create the project structure:
+```bash
+chmod +x setup.sh
+./setup.sh
 
-sudo apt upgrade -y
+The script installs:
 
-Install Required Packages
+AWS CLI v2
 
-Install unzip (needed for Terraform)
+Terraform
 
-sudo apt install unzip
+Required system packages
 
-Install AWS CLI
+## AWS Configuration
 
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+Configure AWS CLI with your credentials:
 
-unzip awscliv2.zip
+aws configure
 
-sudo ./aws/install
+You'll need to enter:
 
-Install Terraform
+AWS Access Key ID
 
-sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+AWS Secret Access Key
 
-wget -O- https://apt.releases.hashicorp.com/gpg | \
+Default region (us-east-1)
 
-gpg --dearmor | \
+Default output format (json)
 
-sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+3. Project Structure
 
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
-https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
-sudo tee /etc/apt/sources.list.d/hashicorp.list
+The script creates the following directory structure:
 
-sudo apt update
+terraform-aws-project/
 
-sudo apt install terraform
+├── vpc/
 
-Verify Installations
+├── security/
 
-Aws - - version
+└── modules/
 
-Terraform - - version
+Infrastructure Details
 
-STEP 2: CONFIGURE AWS
+VPC Configuration
 
-Set Up AWS Credentials:
+CIDR Block: 10.0.0.0/16
 
-Aws configure
+DNS hostnames enabled
 
-Enter:
+DNS support enabled
 
-AWS Access Key ID: [Your Access Key]
+Networking Components
 
-AWS Secret Access Key: [Your Secret Key]
+Public Subnet
 
-Default region name: us-east-1
+CIDR: 10.0.1.0/24
 
-Default output format: json
+Availability Zone: us-east-1a
 
-Verify AWS Configuration:
+Auto-assign public IPs enabled
 
-Aws sts get-caller-identity 
 
-STEP 3: CREATE PROJECT STRUCTURE
+Internet Gateway
 
-Create Project Directory
+Attached to VPC
 
-Mkdir -p ~/terraform-aws-project
+Enables internet connectivity
 
-Cd ~/terraform-aws-project
 
-Create the directory structure
+Route Table
 
-Mkdir -p {vpc,security,modules}
+Routes traffic to internet gateway
 
-Create a base Terraform configuration file:
+Associated with public subnet
 
-Create and edit the main configuration file
-
-Nano main.tf
-
-Then Add This Content:
-
-terraform {
-
-  required_providers {
-	
-   aws = {
-  	     source  = "hashicorp/aws"
-  	     version  = "~> 5.0"
-	}
-  }
-}
-
-
-provider "aws" {
-  region = "us-east-1"
-}
-
-
-module "vpc" {
-  source = "./vpc"
-}
-Save and Exit (Ctrl+X, then Y, then Enter).
-
-Create VPC Configuration:
-
-Nano vpc/main.tf
-
-Add this Content:
-
-Create VPC
-
-resource "aws_vpc" "main" {
-  cidr_block       	      = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support       = true
-
-
-  tags = {
-	Name = "secure-health-vpc"
-  }
-}
-
-Create Public Subnet
-
-resource "aws_subnet" "public" {
-  vpc_id              	            = aws_vpc.main.id
-  cidr_block          	            = "10.0.1.0/24"
-  availability_zone   	            = "us-east-1a"
-  map_public_ip_on_launch = true
-
-
-  tags = {
-	Name = "public-subnet"
-  }
-}
-
-Create Internet Gateway
-
-resource "aws_internet_gateway" "main" {
-  
-  vpc_id = aws_vpc.main.id
-
-
-  tags = {
-	
-  Name = "main-igw"
-  }
-}
-
-Create Route Table
-
-resource "aws_route_table" "public" {
-  
-  vpc_id = aws_vpc.main.id
-
-
-  route {
-	
-  cidr_block = "0.0.0.0/0"
-	
-  gateway_id = aws_internet_gateway.main.id
-  }
-
-
-  tags = {
-	
-  Name = "public-rt"
-  }
-}
-
-
-Associate Route Table with Subnet
-
-resource "aws_route_table_association" "public" {
-
-  subnet_id  	    = aws_subnet.public.id
-  
-  route_table_id = aws_route_table.public.id
-}
-
-STEP 4: INITIALIZE AND APPLY
+Usage
 
 Initialize Terraform
 
-cd ~/terraform-aws-project
+cd terraform-aws-project
 
 terraform init
 
-Format and Validate your configuration
-
-terraform fmt
-
-terraform validate
-
-Plan Your Infrastructure
+Plan Infrastructure
 
 terraform plan -out=tfplan
 
-Apply the configuration:
+Apply Infrastructure
 
 terraform apply "tfplan"
 
-STEP 5: VERIFY AND MONITOR
+Destroy Infrastructure
 
-Check AWS Console for resources
+To remove all created resources:
+
+terraform destroy
+
+Project Files
+
+setup.sh
+
+Contains all necessary commands to set up the development environment and install required tools.
+
+main.tf
+
+Setting up your VPC region.
+
+vpc/main.tf
+
+Contains VPC infrastructure configuration including:
+
+VPC creation
+
+Subnet configuration
+
+Internet Gateway setup
+
+Route table configuration
+
+Verification
+
+Verify resource creation using AWS CLI:
+
+# Check VPC
 
 aws ec2 describe-vpcs --filters "Name=tag:Name,Values=secure-health-vpc"
 
+# Check Subnet
+
 aws ec2 describe-subnets --filters "Name=tag:Name,Values=public-subnet"
 
-Monitor your AWS costs:
+Common Issues and Solutions
 
-aws ce get-cost-and-usage \
+AWS CLI Installation
 
-  --time-period Start=$(date -d "-30 days" +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-	
-  --granularity MONTHLY \
-	
-  --metrics UnblendedCost
+If wget fails, ensure system is updated
 
-To Delete and Clean Up
+Verify unzip is installed
 
-terraform destroy
+Terraform Initialization
+
+If initialization fails, check internet connectivity
+
+Verify AWS credentials are configured correctly
+
+AWS Permissions
+
+Ensure IAM user has appropriate permissions
+
+Verify AWS credentials are entered correctly
+
+
+Next Steps
+
+Add private subnets for better security
+
+Implement NAT Gateway for private subnet internet access
+
+Configure security groups and NACLs
+
+Set up VPC endpoints for AWS services
+
+Contributing
+
+Feel free to submit issues and enhancement requests.
+
+License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
